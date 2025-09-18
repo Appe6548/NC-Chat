@@ -44,7 +44,7 @@ export default {
           parts: [{ text: String(m.content) }],
         }));
 
-      const systemText = `${sysPrompt}${minimumWordCount ? `（不少于 ${minimumWordCount} 个词。）` : ''}`;
+      const systemText = `${sysPrompt}${minimumWordCount ? `（不少于 ${minimumWordCount} 个词。）` : ''}。不要展示推理过程或“思考链”，只给出结论或简洁要点。`;
 
       const endpoint = `${apiBase}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
@@ -64,7 +64,9 @@ export default {
 
       const data = await upstreamRes.json();
       const parts = data?.candidates?.[0]?.content?.parts || [];
-      const text = parts.map(p => p?.text || '').join('');
+      let text = parts.map(p => p?.text || '').join('');
+      const hideCot = String(env.HIDE_COT || '1') !== '0';
+      if (hideCot) text = collapseCoT(text);
       return json({ content: text });
     } catch (e) {
       return json({ error: 'Bad request', details: String(e && e.message || e) }, 400);
@@ -229,4 +231,17 @@ function getIndexHtml() {
   </script>
 </body>
 </html>`;
+}
+
+// Collapse common chain-of-thought markers to a placeholder without exposing details
+function collapseCoT(s) {
+  if (!s) return s;
+  let out = String(s);
+  // Remove fenced blocks that look like reasoning
+  out = out.replace(/```\s*(thinking|reasoning|analysis|chain[_ -]?of[_ -]?thought|cot)[\s\S]*?```/gi, '【思考链已折叠】');
+  // Collapse typical lead-ins
+  out = out.replace(/(^|\n)\s*(让我们一步一步思考|让我们来分析|思考(?:过程)?[:：]|推理[:：]|分析[:：]).*?(\n\n|$)/g, (m, p1, _lead, p3) => `${p1}【思考链已折叠】${p3 || ''}`);
+  // Trim excess placeholders
+  out = out.replace(/(【思考链已折叠】\s*){2,}/g, '【思考链已折叠】');
+  return out;
 }

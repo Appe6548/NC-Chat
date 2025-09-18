@@ -14,3 +14,6 @@ SYSTEM_PROMPT = "用南昌话，直截了当，冷幽默，避免粗俗和人身
 
 # Secrets (set with `wrangler secret put API_KEY`)
 # API_KEY = ""
+
+# Hide/Collapse chain-of-thought style content (1=true, 0=false)
+HIDE_COT = "1"

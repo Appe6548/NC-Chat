@@ -21,6 +21,7 @@ npm i -g wrangler
 - `MODEL`：模型名，默认 `gemini-1.5-flash`
 - `SYSTEM_PROMPT`：系统提示词（默认安全、克制的南昌话风格，可替换）
 - `MINIMUM_WORD_COUNT`：最少词数（可选）
+- `HIDE_COT`：是否折叠/隐藏“思考链”内容，`1` 开启（默认），`0` 关闭
 
 设置密钥示例：
 
