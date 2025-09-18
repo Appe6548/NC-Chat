@@ -1,0 +1,16 @@
+name = "nc-chat"
+main = "src/worker.js"
+compatibility_date = "2024-09-01"
+
+[vars]
+# Configure these in your environment or via `wrangler secret put` for the key
+# Gemini API base URL (Google AI Studio): https://generativelanguage.googleapis.com/v1beta
+API_URL = "https://generativelanguage.googleapis.com/v1beta"
+MODEL = "gemini-1.5-flash"
+MINIMUM_WORD_COUNT = "20"
+
+# Optional: default system prompt (override via env)
+SYSTEM_PROMPT = "用南昌话，直截了当，冷幽默，避免粗俗和人身攻击，回答尽量简短到点，不讲故事。"
+
+# Secrets (set with `wrangler secret put API_KEY`)
+# API_KEY = ""

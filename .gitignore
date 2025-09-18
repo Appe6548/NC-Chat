@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+
+# Env/Secrets
+.env
+.env.*
+.dev.vars
+
+# Wrangler local state
+.wrangler/
+
+# Packages / builds
+node_modules/
+dist/
+build/
+
