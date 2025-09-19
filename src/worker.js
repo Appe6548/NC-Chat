@@ -141,6 +141,12 @@ function getIndexHtml() {
     .msg{ padding:12px 14px; border-radius:12px; max-width:85%; white-space:pre-wrap; line-height:1.5; }
     .msg.user{ align-self:flex-end; background: linear-gradient(180deg, var(--glass-2), rgba(255,255,255,0.06)); border:1px solid rgba(255,255,255,0.14); }
     .msg.assistant{ align-self:flex-start; background: rgba(8,15,24,0.6); border:1px solid rgba(255,255,255,0.1); }
+    .msg .cot-badge{
+      display:inline-flex; align-items:center; gap:6px; padding:4px 10px; margin:4px 0;
+      border-radius:999px; font-size:12px; color:var(--muted); background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.16); backdrop-filter: blur(6px) saturate(140%);
+    }
+    .msg .cot-badge::before{ content:'🧠'; }
     .bar{
       display:flex; gap:10px; padding:12px; align-items:flex-end; border-top:1px solid rgba(255,255,255,0.08);
     }
@@ -187,7 +193,23 @@ function getIndexHtml() {
     function addMessage(role, content){
       const item = document.createElement('div');
       item.className = 'msg ' + (role === 'user' ? 'user' : 'assistant');
-      item.textContent = content;
+      const safeContent = typeof content === 'string' ? content : '';
+      if (role === 'assistant' && safeContent.includes('【思考链已折叠】')) {
+        const fragments = safeContent.split('【思考链已折叠】');
+        fragments.forEach((fragment, idx) => {
+          if (fragment) item.appendChild(document.createTextNode(fragment));
+          if (idx < fragments.length - 1) {
+            const badge = document.createElement('span');
+            badge.className = 'cot-badge';
+            badge.setAttribute('title', '思考链已折叠。如需查看，请关闭 HIDE_COT 环境变量。');
+            badge.setAttribute('role', 'note');
+            badge.textContent = '思考链已折叠';
+            item.appendChild(badge);
+          }
+        });
+      } else {
+        item.textContent = safeContent;
+      }
       elMsgs.appendChild(item);
       elMsgs.scrollTop = elMsgs.scrollHeight;
     }
@@ -237,11 +259,79 @@ function getIndexHtml() {
 function collapseCoT(s) {
   if (!s) return s;
   let out = String(s);
-  // Remove fenced blocks that look like reasoning
+
+  // Strip delimited reasoning tags such as <think>...</think>
+  out = stripDelimited(out, /<\s*(think|analysis|reasoning|cot)[^>]*>/gi, /<\/\s*(think|analysis|reasoning|cot)\s*>/i);
+  out = stripDelimited(out, /\[(analysis|reasoning|think|cot)\]/gi, /\[\/(analysis|reasoning|think|cot)\]/i);
+
+  // Remove fenced blocks that explicitly mark reasoning-like languages
   out = out.replace(/```\s*(thinking|reasoning|analysis|chain[_ -]?of[_ -]?thought|cot)[\s\S]*?```/gi, '【思考链已折叠】');
-  // Collapse typical lead-ins
-  out = out.replace(/(^|\n)\s*(让我们一步一步思考|让我们来分析|思考(?:过程)?[:：]|推理[:：]|分析[:：]).*?(\n\n|$)/g, (m, p1, _lead, p3) => `${p1}【思考链已折叠】${p3 || ''}`);
-  // Trim excess placeholders
+
+  // Collapse inline <think>... style tags that may lack closing tag
+  out = out.replace(/<think[^>]*>[\s\S]*$/gi, '【思考链已折叠】');
+
+  // Collapse common textual lead-ins while preserving the final answer markers.
+  out = collapseHeadingBlocks(out);
+
+  // Normalize duplicated placeholders and tidy surrounding whitespace/punctuation
   out = out.replace(/(【思考链已折叠】\s*){2,}/g, '【思考链已折叠】');
+  out = out.replace(/【思考链已折叠】(?=[，。：,.;!?！？])/g, '【思考链已折叠】');
+
   return out;
+}
+
+function stripDelimited(input, startPattern, endPattern) {
+  let text = input;
+  let result = '';
+  let cursor = 0;
+  const startRegex = new RegExp(startPattern.source, startPattern.flags.includes('g') ? startPattern.flags : startPattern.flags + 'g');
+  let match;
+
+  while ((match = startRegex.exec(text)) !== null) {
+    const startIdx = match.index;
+    const openLength = match[0].length;
+    const afterOpen = startIdx + openLength;
+    const rest = text.slice(afterOpen);
+    const endRegex = new RegExp(endPattern.source, endPattern.flags); // do not force global to avoid skipping
+    const endMatch = endRegex.exec(rest);
+    const endIdx = endMatch ? afterOpen + endMatch.index + endMatch[0].length : text.length;
+
+    result += text.slice(cursor, startIdx) + '【思考链已折叠】';
+    cursor = endIdx;
+    startRegex.lastIndex = cursor;
+    if (!endMatch) break;
+  }
+
+  return result + text.slice(cursor);
+}
+
+function collapseHeadingBlocks(input) {
+  const headingRegex = /(^|\n)(\s*)(?:让我们一步一步思考|让我们来分析|让我们来一步步分析|我们一步一步|一步一步来|思考(?:过程)?|推理|分析|思路|Chain\s*of\s*Thought|Thought\s*Process|Reasoning|Analysis|Let's think step by step|Let's reason step by step|Working|Plan|Solution Outline)[:：]?\s*/gi;
+  const finalMarkerRegex = /\n\s*(?:最终答案|总结|结论|回答|答复|答案|答桉|Final Answer|Answer|Solution|Result|Output|Response|Reply)[:：]/i;
+  const doubleNewlineRegex = /\n\s*\n/;
+
+  let result = '';
+  let cursor = 0;
+  let match;
+
+  while ((match = headingRegex.exec(input)) !== null) {
+    const headingStart = match.index + match[1].length;
+    const afterHeading = headingRegex.lastIndex;
+    const remainder = input.slice(afterHeading);
+
+    let sliceEnd = remainder.search(finalMarkerRegex);
+    if (sliceEnd === -1) {
+      sliceEnd = remainder.search(doubleNewlineRegex);
+    }
+    if (sliceEnd === -1) {
+      sliceEnd = remainder.length;
+    }
+
+    const endIdx = afterHeading + sliceEnd;
+    result += input.slice(cursor, headingStart) + '【思考链已折叠】';
+    cursor = endIdx;
+    headingRegex.lastIndex = cursor;
+  }
+
+  return result + input.slice(cursor);
 }
