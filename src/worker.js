@@ -88,7 +88,7 @@ function getIndexHtml() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>南昌话对话 · Cloudflare Worker</title>
+  <title>南昌话-nsfw</title>
   <style>
     :root{
       --bg: #0b0f14;
@@ -130,7 +130,6 @@ function getIndexHtml() {
       padding:14px 16px; gap:12px;
     }
     header .title{ font-weight:700; letter-spacing:0.3px; }
-    header .right{ display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px; }
     .chat{
       flex:1; display:flex; flex-direction:column; overflow:hidden;
     }
@@ -160,7 +159,6 @@ function getIndexHtml() {
       background: linear-gradient(180deg, #a8e2ff, #77caff); box-shadow: 0 6px 18px rgba(124,199,255,0.35);
     }
     button:disabled{ opacity:0.6; cursor:not-allowed; }
-    .hint{ font-size:12px; color:var(--muted); padding:0 4px 10px 4px; }
   </style>
   <meta name="color-scheme" content="dark light">
   <meta name="robots" content="noindex">
@@ -170,12 +168,10 @@ function getIndexHtml() {
 <body>
   <div class="app">
     <header class="glass">
-      <div class="title">南昌话对话</div>
-      <div class="right">Cloudflare Worker · Liquid Glass</div>
+      <div class="title">南昌话-nsfw</div>
     </header>
     <section class="chat glass">
       <div id="messages" class="messages"></div>
-      <div class="hint">提示：后端使用 Gemini API，密钥与地址由环境变量配置。</div>
       <div class="bar">
         <textarea id="input" rows="1" placeholder="输入内容… Ctrl/⌘+Enter 发送"></textarea>
         <button id="send">发送</button>
