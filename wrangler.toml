@@ -1,4 +1,4 @@
-name = "nc-chat"
+name = "nc-chat-sfw"
 main = "src/worker.js"
 compatibility_date = "2024-09-01"
 
