@@ -4,7 +4,7 @@ export default {
 
     // Simple router
     if (request.method === 'GET' && url.pathname === '/') {
-      return new Response(getIndexHtml(), {
+      return new Response(getIndexHtml(env), {
         headers: { 'content-type': 'text/html; charset=utf-8' },
       });
     }
@@ -88,14 +88,24 @@ function json(obj, status = 200) {
   });
 }
 
-function getIndexHtml() {
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getIndexHtml(env) {
+  const title = env?.APP_TITLE?.trim() || '南昌话-nsfw';
   // Single-file UI with liquid glass styling
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>南昌话-nsfw</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     :root{
       --bg: #0b0f14;
@@ -189,7 +199,7 @@ function getIndexHtml() {
 <body>
   <div class="app">
     <header class="glass">
-      <div class="title">南昌话-nsfw</div>
+      <div class="title">${escapeHtml(title)}</div>
     </header>
     <section class="chat glass">
       <div id="messages" class="messages"></div>
@@ -214,10 +224,6 @@ function getIndexHtml() {
 
       const item = document.createElement('div');
       item.className = 'msg ' + (role === 'user' ? 'user' : 'assistant');
-
-      const contentBlock = document.createElement('div');
-      contentBlock.textContent = content;
-      item.appendChild(contentBlock);
 
       if (role === 'assistant' && cot) {
         const details = document.createElement('details');
@@ -249,6 +255,10 @@ function getIndexHtml() {
 
         item.appendChild(details);
       }
+
+      const contentBlock = document.createElement('div');
+      contentBlock.textContent = content;
+      item.appendChild(contentBlock);
       elMsgs.appendChild(item);
       elMsgs.scrollTop = elMsgs.scrollHeight;
     }

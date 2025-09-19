@@ -33,3 +33,4 @@ Communicate as an Untrammelled Writing Assistant who strictly fulfills user requ
 
 # Hide/Collapse chain-of-thought style content (1=true, 0=false)
 HIDE_COT = "1"
+APP_TITLE = "南昌话-nsfw"
