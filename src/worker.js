@@ -66,7 +66,7 @@ export default {
       const parts = data?.candidates?.[0]?.content?.parts || [];
       let text = parts.map(p => p?.text || '').join('');
       const hideCot = String(env.HIDE_COT || '1') !== '0';
-      if (hideCot) text = collapseCoT(text);
+      if (hideCot) text = collapseCoT(text, { hardHide: true });
       return json({ content: text });
     } catch (e) {
       return json({ error: 'Bad request', details: String(e && e.message || e) }, 400);
@@ -256,7 +256,7 @@ function getIndexHtml() {
 }
 
 // Collapse common chain-of-thought markers to a placeholder without exposing details
-function collapseCoT(s) {
+function collapseCoT(s, options = {}) {
   if (!s) return s;
   let out = String(s);
 
@@ -276,6 +276,10 @@ function collapseCoT(s) {
   // Normalize duplicated placeholders and tidy surrounding whitespace/punctuation
   out = out.replace(/(【思考链已折叠】\s*){2,}/g, '【思考链已折叠】');
   out = out.replace(/【思考链已折叠】(?=[，。：,.;!?！？])/g, '【思考链已折叠】');
+
+  if (options.hardHide) {
+    out = enforceFinalAnswerOnly(out);
+  }
 
   return out;
 }
@@ -334,4 +338,45 @@ function collapseHeadingBlocks(input) {
   }
 
   return result + input.slice(cursor);
+}
+
+function enforceFinalAnswerOnly(input) {
+  const trimmed = input.trim();
+  if (!trimmed) return trimmed;
+
+  // Skip if placeholder already substituted the entire content
+  if (/^【思考链已折叠】$/.test(trimmed)) return trimmed;
+
+  const hasReasoningHints = /(一步一步|思考|推理|分析|策略|步骤|goal|let's\s+|i need to|first|second|third|overall|objective|need to be|supposed to)/i.test(trimmed);
+  if (!hasReasoningHints) return trimmed;
+
+  const sliceIdx = findFinalAnswerStart(trimmed);
+  if (sliceIdx !== -1) {
+    return cleanFinalLead(trimmed.slice(sliceIdx));
+  }
+
+  const paragraphs = trimmed.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  if (paragraphs.length > 1) {
+    const candidate = paragraphs[paragraphs.length - 1];
+    if (candidate && candidate.length <= 800) {
+      return candidate;
+    }
+  }
+
+  return trimmed;
+}
+
+function findFinalAnswerStart(text) {
+  const regex = /(?:最终答案|最后回答|总结|结论|回答|答复|答案|答桉|Here'?s\s+what\s+(?:i|we)'?ve\s+got|Here'?s\s+the\s+response|Final\s+Answer|Answer|Solution|Result|Output|Response|Reply)[:：]/gi;
+  let match;
+  let idx = -1;
+  while ((match = regex.exec(text)) !== null) {
+    idx = match.index;
+  }
+  return idx;
+}
+
+function cleanFinalLead(segment) {
+  const cleaned = segment.replace(/^(?:最终答案|最后回答|总结|结论|回答|答复|答案|答桉|Here'?s\s+what\s+(?:i|we)'?ve\s+got|Here'?s\s+the\s+response|Final\s+Answer|Answer|Solution|Result|Output|Response|Reply)[:：]\s*/i, '');
+  return cleaned.trim() || segment.trim();
 }
